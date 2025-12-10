@@ -6,21 +6,68 @@ import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="SmartFinance AI", layout="wide")
 
-# -------------------------------------------------------
-# HEADER
-# -------------------------------------------------------
-st.title("💸 SmartFinance AI — Pengatur Keuangan Otomatis")
-st.write("Aplikasi cerdas untuk membantu mengatur dan menganalisis pengeluaran harian.")
+# ================= CUSTOM CSS (PINK THEME) =================
+pink_css = """
+<style>
+html, body, [class*="css"]  {
+    font-family: 'Poppins', sans-serif;
+}
 
-# -------------------------------------------------------
-# UPLOAD FILE
-# -------------------------------------------------------
-uploaded_file = st.file_uploader("📤 Upload file transaksi (CSV)", type="csv")
+header, .css-18e3th9 {
+    background-color: #ffdee9 !important;
+}
+
+.main {
+    background-color: #fff1f7 !important;
+}
+
+h1, h2, h3, h4 {
+    color: #d63384 !important;
+}
+
+.stButton>button {
+    background-color: #ff66a3 !important;
+    color: white;
+    border-radius: 8px;
+    border: none;
+}
+
+.stMetric {
+    background: #ffb3cc !important;
+    padding: 20px;
+    border-radius: 15px;
+}
+
+.block-container {
+    padding-top: 2rem;
+}
+
+.upload-box {
+    background: white;
+    padding: 15px;
+    border-radius: 12px;
+    border: 2px dashed #ff8fb8;
+}
+</style>
+"""
+st.markdown(pink_css, unsafe_allow_html=True)
+
+# ================= HEADER =================
+st.markdown("""
+<div style="padding:20px; background:#ffb6d9; border-radius:10px;">
+<h1>💸 SmartFinance AI — Pink Edition</h1>
+<p>Aplikasi pintar untuk analisis keuangan dengan tampilan pink yang manis.</p>
+</div>
+""", unsafe_allow_html=True)
+
+# ================= UPLOAD CSV =================
+st.subheader("📤 Upload Data Keuangan")
+uploaded_file = st.file_uploader("Upload file CSV kamu:", type="csv")
 
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
 
-    st.subheader("📄 Data Transaksi")
+    st.success("File berhasil diupload!")
     st.dataframe(df)
 
     required_cols = ["tanggal", "kategori", "jumlah"]
@@ -28,90 +75,78 @@ if uploaded_file:
         st.error("CSV harus memiliki kolom: tanggal, kategori, jumlah")
         st.stop()
 
-    # Konversi ke datetime
     df["tanggal"] = pd.to_datetime(df["tanggal"])
 
-    # -------------------------------------------------------
-    # STATISTIK
-    # -------------------------------------------------------
-    st.subheader("📊 Statistik Pengeluaran")
+    # ================= DASHBOARD =================
+    st.subheader("🎀 Dashboard Keuangan")
+
+    col1, col2 = st.columns(2)
 
     total = df["jumlah"].sum()
-    st.metric("Total Pengeluaran", f"Rp {total:,.0f}")
-
-    # Per kategori
     kategori_sum = df.groupby("kategori")["jumlah"].sum()
 
-    st.write("### Pengeluaran per Kategori")
+    with col1:
+        st.metric("Total Pengeluaran", f"Rp {total:,.0f}")
+
+    with col2:
+        st.metric("Kategori Terbesar", kategori_sum.idxmax())
+
+    st.write("### 📊 Grafik Pengeluaran per Kategori (Pink Theme)")
     st.bar_chart(kategori_sum)
 
-    # Pie chart
     fig, ax = plt.subplots()
     ax.pie(kategori_sum, labels=kategori_sum.index, autopct='%1.1f%%')
     ax.axis("equal")
     st.pyplot(fig)
 
-    # -------------------------------------------------------
-    # AI REKOMENDASI
-    # -------------------------------------------------------
-    st.subheader("🤖 Rekomendasi AI")
+    # ================= REKOMENDASI AI =================
+    st.subheader("💗 Rekomendasi AI")
+    rekom = []
 
-    rekomendasi = []
-
-    makanan = df[df["kategori"]=="makanan"]["jumlah"].sum() if "makanan" in df["kategori"].unique() else 0
-    hiburan = df[df["kategori"]=="hiburan"]["jumlah"].sum() if "hiburan" in df["kategori"].unique() else 0
+    makanan = kategori_sum.get("makanan", 0)
+    hiburan = kategori_sum.get("hiburan", 0)
 
     if makanan > total * 0.35:
-        rekomendasi.append("Pengeluaran makanan terlalu tinggi. Coba atur menu atau masak sendiri.")
+        rekom.append("Pengeluaran makanan cukup tinggi, coba lebih hemat ya 💕")
 
     if hiburan > total * 0.20:
-        rekomendasi.append("Biaya hiburan cukup besar. Kurangi kegiatan tidak mendesak.")
+        rekom.append("Hiburan kamu cukup banyak, coba kurangi sedikit 💗")
 
     if total > 3000000:
-        rekomendasi.append("Total pengeluaran bulan ini cukup tinggi. Pertimbangkan membuat anggaran mingguan.")
+        rekom.append("Total pengeluaran cukup besar bulan ini, hati-hati ya 💞")
 
-    if len(rekomendasi) == 0:
-        st.success("Keuangan stabil! Tidak ditemukan pengeluaran berlebihan.")
-    else:
-        for r in rekomendasi:
+    if rekom:
+        for r in rekom:
             st.warning(r)
+    else:
+        st.success("Keuangan kamu aman! Tetap pertahankan ya 💖")
 
-    # -------------------------------------------------------
-    # PREDIKSI PENGELUARAN (AI)
-    # -------------------------------------------------------
-    st.subheader("📈 Prediksi Pengeluaran Bulan Depan (AI)")
+    # ================= PREDIKSI AI =================
+    st.subheader("📈 Prediksi Pengeluaran (AI)")
 
     df["bulan"] = df["tanggal"].dt.month
     monthly = df.groupby("bulan")["jumlah"].sum().reset_index()
 
-    X = monthly[["bulan"]]
-    y = monthly["jumlah"]
-
     model = LinearRegression()
-    model.fit(X, y)
+    model.fit(monthly[["bulan"]], monthly["jumlah"])
 
-    next_month = np.array([[monthly["bulan"].max() + 1]])
-    pred = model.predict(next_month)[0]
+    next_month = monthly["bulan"].max() + 1
+    pred = model.predict([[next_month]])[0]
 
-    st.info(f"Prediksi pengeluaran bulan depan: **Rp {pred:,.0f}**")
+    st.info(f"💞 Prediksi bulan depan: Rp {pred:,.0f}")
 
-    # -------------------------------------------------------
-    # RINGKASAN OTOMATIS
-    # -------------------------------------------------------
-    st.subheader("📝 Ringkasan Laporan Otomatis")
+    # ================= RINGKASAN =================
+    st.subheader("📝 Ringkasan Laporan")
 
-    summary = f"""
+    st.write(f"""
     **Ringkasan Pengeluaran:**
-    - Total Pengeluaran: Rp {total:,.0f}
-    - Pengeluaran Terbesar: {kategori_sum.idxmax()} (Rp {kategori_sum.max():,.0f})
-    - Bulan dengan pengeluaran tertinggi: {monthly.loc[monthly['jumlah'].idxmax(), 'bulan']}
-    - Prediksi Pengeluaran Bulan Depan: Rp {pred:,.0f}
+    - Total: Rp {total:,.0f}
+    - Kategori Terbesar: {kategori_sum.idxmax()} (Rp {kategori_sum.max():,.0f})
+    - Prediksi Bulan Depan: Rp {pred:,.0f}
 
-    **Catatan AI:**
-    {"; ".join(rekomendasi) if rekomendasi else "Keuangan stabil dan sehat!"}
-    """
-
-    st.write(summary)
+    **Rekomendasi AI:**
+    {", ".join(rekom) if rekom else "Keuangan kamu dalam kondisi baik 💗"}
+    """)
 
 else:
-    st.info("Silakan upload file CSV untuk mulai menganalisis.")
+    st.info("Silakan upload file CSV untuk mulai analisis 🎀")
